@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract VesselRegistry {
+enum VesselStatus { Registered, InTransit, AtPort, Departed, Suspended }
+
+struct Vessel {
+uint256 id;
+string vesselName;
+string imoNumber;
+string vesselType;
+string flagState;
+string ownerName;
+address registeredBy;
+uint256 registrationTime;
+VesselStatus status;
+bool exists;
+}
+
+address public authority;
+uint256 private vesselCounter;
+
+mapping(uint256 => Vessel) public vessels;
+mapping(string => uint256) public imoToId;
+
+// Events
+event VesselRegistered(
+uint256 indexed vesselId,
+string vesselName,
+string imoNumber,
+address registeredBy,
+uint256 timestamp
+);
+
+event VesselStatusUpdated(
+uint256 indexed vesselId,
+string vesselName,
+VesselStatus newStatus,
+uint256 timestamp
+);
+
+event AuthorityTransferred(address indexed previousAuthority, address indexed newAuthority);
+
+// Modifiers
+modifier onlyAuthority() {
+require(msg.sender == authority, "Only port authority can call this");
+_;
+}
+
+modifier vesselExists(uint256 _id) {
+require(vessels[_id].exists, "Vessel not found in registry");
+_;
+}
+
+constructor() {
+authority = msg.sender;
+vesselCounter = 0;
+}
+
+function registerVessel(
+string memory _vesselName,
+string memory _imoNumber,
+string memory _vesselType,
+string memory _flagState,
+string memory _ownerName
+) public onlyAuthority returns (uint256) {
+require(bytes(_vesselName).length > 0, "Vessel name required");
+require(bytes(_imoNumber).length > 0, "IMO number required");
+require(imoToId[_imoNumber] == 0, "IMO number already registered");
+
+vesselCounter++;
+uint256 newId = vesselCounter;
+
+vessels[newId] = Vessel({
+id: newId,
+vesselName: _vesselName,
+imoNumber: _imoNumber,
+vesselType: _vesselType,
+flagState: _flagState,
+ownerName: _ownerName,
+registeredBy: msg.sender,
+registrationTime: block.timestamp,
+status: VesselStatus.Registered,
+exists: true
+});
+
+imoToId[_imoNumber] = newId;
+
+emit VesselRegistered(newId, _vesselName, _imoNumber, msg.sender, block.timestamp);
+return newId;
+}
+
+function updateVesselStatus(
+uint256 _vesselId,
+VesselStatus _newStatus
+) public onlyAuthority vesselExists(_vesselId) {
+vessels[_vesselId].status = _newStatus;
+emit VesselStatusUpdated(
+_vesselId,
+vessels[_vesselId].vesselName,
+_newStatus,
+block.timestamp
+);
+}
+
+function getVessel(uint256 _vesselId) public view vesselExists(_vesselId)
+returns (
+uint256 id,
+string memory vesselName,
+string memory imoNumber,
+string memory vesselType,
+string memory flagState,
+string memory ownerName,
+address registeredBy,
+uint256 registrationTime,
+VesselStatus status
+)
+{
+Vessel storage v = vessels[_vesselId];
+return (
+v.id, v.vesselName, v.imoNumber, v.vesselType,
+v.flagState, v.ownerName, v.registeredBy,
+v.registrationTime, v.status
+);
+}
+
+function getVesselByIMO(string memory _imoNumber) public view returns (uint256) {
+require(imoToId[_imoNumber] != 0, "Vessel not found");
+return imoToId[_imoNumber];
+}
+
+function getTotalVessels() public view returns (uint256) {
+return vesselCounter;
+}
+
+function transferAuthority(address _newAuthority) public onlyAuthority {
+require(_newAuthority != address(0), "Invalid address");
+require(_newAuthority != authority, "Already the authority");
+
+emit AuthorityTransferred(authority, _newAuthority);
+authority = _newAuthority;
+}
+}
