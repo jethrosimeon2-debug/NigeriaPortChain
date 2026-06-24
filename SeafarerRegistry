@@ -1,0 +1,155 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+/// @title SeafarerRegistry - NigeriaPort Chain
+/// @author Ochuko Jethro Ehwarieme (U2022/TLM/124)
+/// @notice Manages seafarer identity and certification records on the blockchain
+
+contract SeafarerRegistry {
+
+enum CertificateStatus { Valid, Expired, Suspended, Revoked }
+
+struct Seafarer {
+uint256 seafarerId;
+string fullName;
+string rankOrPosition;
+string nationality;
+string certificateNumber; // STCW or NIMASA cert number
+string certificateType; // e.g. "STCW Basic Safety", "Officer of the Watch"
+uint256 issueDate;
+uint256 expiryDate;
+address registeredBy;
+uint256 registrationTime;
+CertificateStatus certStatus;
+bool exists;
+}
+
+address public authority;
+uint256 private seafarerCounter;
+
+mapping(uint256 => Seafarer) public seafarers;
+mapping(string => uint256) public certNumberToId;
+
+event SeafarerRegistered(
+uint256 indexed seafarerId,
+string fullName,
+string certificateNumber,
+address registeredBy,
+uint256 timestamp
+);
+
+event CertificateStatusUpdated(
+uint256 indexed seafarerId,
+string fullName,
+CertificateStatus newStatus,
+uint256 timestamp
+);
+
+modifier onlyAuthority() {
+require(msg.sender == authority, "Only port authority can call this");
+_;
+}
+
+modifier seafarerExists(uint256 _id) {
+require(seafarers[_id].exists, "Seafarer not found in registry");
+_;
+}
+
+constructor() {
+authority = msg.sender;
+seafarerCounter = 0;
+}
+
+/// @notice Register a new seafarer and their certification on the blockchain
+function registerSeafarer(
+string memory _fullName,
+string memory _rankOrPosition,
+string memory _nationality,
+string memory _certificateNumber,
+string memory _certificateType,
+uint256 _issueDate,
+uint256 _expiryDate
+) public onlyAuthority returns (uint256) {
+require(bytes(_fullName).length > 0, "Full name required");
+require(bytes(_certificateNumber).length > 0, "Certificate number required");
+require(certNumberToId[_certificateNumber] == 0, "Certificate number already registered");
+require(_expiryDate > _issueDate, "Expiry must be after issue date");
+
+seafarerCounter++;
+uint256 newId = seafarerCounter;
+
+seafarers[newId] = Seafarer({
+seafarerId: newId,
+fullName: _fullName,
+rankOrPosition: _rankOrPosition,
+nationality: _nationality,
+certificateNumber: _certificateNumber,
+certificateType: _certificateType,
+issueDate: _issueDate,
+expiryDate: _expiryDate,
+registeredBy: msg.sender,
+registrationTime: block.timestamp,
+certStatus: CertificateStatus.Valid,
+exists: true
+});
+
+certNumberToId[_certificateNumber] = newId;
+
+emit SeafarerRegistered(newId, _fullName, _certificateNumber, msg.sender, block.timestamp);
+return newId;
+}
+
+/// @notice Update the certification status of a registered seafarer
+function updateCertificateStatus(uint256 _seafarerId, CertificateStatus _newStatus)
+public onlyAuthority seafarerExists(_seafarerId)
+{
+seafarers[_seafarerId].certStatus = _newStatus;
+emit CertificateStatusUpdated(
+_seafarerId,
+seafarers[_seafarerId].fullName,
+_newStatus,
+block.timestamp
+);
+}
+
+/// @notice Retrieve full seafarer record by ID
+function getSeafarer(uint256 _seafarerId)
+public view seafarerExists(_seafarerId)
+returns (
+uint256 seafarerId,
+string memory fullName,
+string memory rankOrPosition,
+string memory nationality,
+string memory certificateNumber,
+string memory certificateType,
+uint256 issueDate,
+uint256 expiryDate,
+CertificateStatus certStatus
+)
+{
+Seafarer storage s = seafarers[_seafarerId];
+return (
+s.seafarerId, s.fullName, s.rankOrPosition, s.nationality,
+s.certificateNumber, s.certificateType,
+s.issueDate, s.expiryDate, s.certStatus
+);
+}
+
+/// @notice Look up a seafarer ID by certificate number
+function getIdByCertNumber(string memory _certNumber)
+public view returns (uint256)
+{
+return certNumberToId[_certNumber];
+}
+
+/// @notice Get total number of registered seafarers
+function getTotalSeafarers() public view returns (uint256) {
+return seafarerCounter;
+}
+
+/// @notice Transfer authority to a new administrator
+function transferAuthority(address _newAuthority) public onlyAuthority {
+require(_newAuthority != address(0), "Invalid address");
+authority = _newAuthority;
+}
+}
