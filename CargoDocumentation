@@ -1,0 +1,131 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+/// @title CargoDocumentation - NigeriaPort Chain
+/// @author Ochuko Jethro Ehwarieme (U2022/TLM/124)
+
+contract CargoDocumentation {
+
+enum CargoStatus { Issued, InTransit, AtDestinationPort, Delivered, Disputed }
+
+struct BillOfLading {
+uint256 bolId;
+uint256 vesselId;
+uint256 bookingId;
+string shipperName;
+string consigneeName;
+string cargoDescription;
+string originPort;
+string destinationPort;
+uint256 cargoWeightKg;
+string cargoType;
+address currentHolder;
+uint256 issueTime;
+CargoStatus status;
+bool exists;
+}
+
+address public authority;
+uint256 private bolCounter;
+
+mapping(uint256 => BillOfLading) public billsOfLading;
+
+event BolIssued(uint256 indexed bolId, uint256 indexed vesselId, string shipperName, string consigneeName, uint256 timestamp);
+event BolTransferred(uint256 indexed bolId, address indexed from, address indexed to, uint256 timestamp);
+event CargoStatusUpdated(uint256 indexed bolId, CargoStatus newStatus, uint256 timestamp);
+
+modifier onlyAuthority() {
+require(msg.sender == authority, "Only port authority can call this");
+_;
+}
+
+modifier bolExists(uint256 _bolId) {
+require(billsOfLading[_bolId].exists, "Bill of Lading not found");
+_;
+}
+
+constructor() {
+authority = msg.sender;
+bolCounter = 0;
+}
+
+function issueBillOfLading(
+uint256 _vesselId,
+uint256 _bookingId,
+string memory _shipperName,
+string memory _consigneeName,
+string memory _cargoDescription,
+string memory _originPort,
+string memory _destinationPort,
+uint256 _cargoWeightKg,
+string memory _cargoType
+) public onlyAuthority returns (uint256) {
+require(bytes(_shipperName).length > 0, "Shipper name required");
+require(bytes(_consigneeName).length > 0, "Consignee name required");
+require(bytes(_cargoDescription).length > 0, "Cargo description required");
+require(_cargoWeightKg > 0, "Cargo weight > 0");
+
+bolCounter++;
+uint256 newBolId = bolCounter;
+
+billsOfLading[newBolId] = BillOfLading({
+bolId: newBolId,
+vesselId: _vesselId,
+bookingId: _bookingId,
+shipperName: _shipperName,
+consigneeName: _consigneeName,
+cargoDescription: _cargoDescription,
+originPort: _originPort,
+destinationPort: _destinationPort,
+cargoWeightKg: _cargoWeightKg,
+cargoType: _cargoType,
+currentHolder: msg.sender,
+issueTime: block.timestamp,
+status: CargoStatus.Issued,
+exists: true
+});
+
+emit BolIssued(newBolId, _vesselId, _shipperName, _consigneeName, block.timestamp);
+return newBolId;
+}
+
+function transferBol(uint256 _bolId, address _newHolder) public bolExists(_bolId) {
+BillOfLading storage bol = billsOfLading[_bolId];
+require(msg.sender == bol.currentHolder || msg.sender == authority, "Not authorised");
+require(_newHolder != address(0), "Invalid address");
+require(bol.status != CargoStatus.Delivered, "Cannot transfer delivered BoL");
+
+address previous = bol.currentHolder;
+bol.currentHolder = _newHolder;
+
+emit BolTransferred(_bolId, previous, _newHolder, block.timestamp);
+}
+
+function updateCargoStatus(uint256 _bolId, CargoStatus _newStatus)
+public onlyAuthority bolExists(_bolId)
+{
+billsOfLading[_bolId].status = _newStatus;
+emit CargoStatusUpdated(_bolId, _newStatus, block.timestamp);
+}
+
+// Simple getters - should compile fine
+function getBasicInfo(uint256 _bolId) public view bolExists(_bolId) returns (
+uint256 bolId,
+uint256 vesselId,
+uint256 bookingId,
+address currentHolder,
+CargoStatus status
+) {
+BillOfLading storage b = billsOfLading[_bolId];
+return (b.bolId, b.vesselId, b.bookingId, b.currentHolder, b.status);
+}
+
+function getTotalBols() public view returns (uint256) {
+return bolCounter;
+}
+
+function transferAuthority(address _newAuthority) public onlyAuthority {
+require(_newAuthority != address(0), "Invalid address");
+authority = _newAuthority;
+}
+}
