@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "@openzeppelin/contracts@4.9.6/access/Ownable.sol";
+import "@openzeppelin/contracts@4.9.6/security/Pausable.sol";
+
+/// @title PortBooking - NigeriaPort Chain
+/// @author Ochuko Jethro Ehwarieme (U2022/TLM/124)
+/// @notice Manages vessel berth booking and status tracking for Nigerian ports
+
+contract PortBooking is Ownable, Pausable {
+
+enum BookingStatus { Pending, Confirmed, Completed, Cancelled }
+
+struct Booking {
+uint256 bookingId;
+uint256 vesselId;
+string portName;
+string berthNumber;
+string cargoType;
+uint64 arrivalTime;
+uint64 departureTime;
+address bookedBy;
+uint64 bookingTime;
+BookingStatus status;
+bool exists;
+}
+
+uint256 private _bookingCounter;
+
+mapping(uint256 => Booking) private _bookings;
+mapping(string => mapping(string => uint256)) private _berthOccupancy; // port => berth => bookingId
+
+// Events
+event BookingCreated(
+uint256 indexed bookingId,
+uint256 indexed vesselId,
+string portName,
+string berthNumber,
+address indexed bookedBy,
+uint64 arrivalTime
+);
+
+event BookingConfirmed(uint256 indexed bookingId, string portName, string berthNumber, uint64 timestamp);
+event BookingCompleted(uint256 indexed bookingId, string portName, string berthNumber, uint64 timestamp);
+event BookingCancelled(uint256 indexed bookingId, string portName, string berthNumber, uint64 timestamp);
+
+// Custom Errors (cheaper gas than string errors)
+error PortNameRequired();
+error BerthNumberRequired();
+error ArrivalMustBeInFuture();
+error InvalidDepartureTime();
+error BerthAlreadyOccupied();
+error BookingNotFound();
+error InvalidStatus();
+error Unauthorized();
+error DepartureTimeNotReached();
+error BookingAlreadyCompleted();
+
+constructor() {
+    _transferOwnership(msg.sender);
+}
+
+modifier onlyPortAuthority() {
+require(owner() == msg.sender, "Only Port Authority can perform this action");
+_;
+}
+
+function createBooking(
+uint256 _vesselId,
+string memory _portName,
+string memory _berthNumber,
+string memory _cargoType,
+uint64 _arrivalTime,
+uint64 _departureTime
+) external whenNotPaused returns (uint256) {
+if (bytes(_portName).length == 0) revert PortNameRequired();
+if (bytes(_berthNumber).length == 0) revert BerthNumberRequired();
+if (bytes(_cargoType).length == 0) revert("Cargo type required");
+if (_arrivalTime <= block.timestamp) revert ArrivalMustBeInFuture();
+if (_departureTime <= _arrivalTime) revert InvalidDepartureTime();
+if (_berthOccupancy[_portName][_berthNumber] != 0) revert BerthAlreadyOccupied();
+
+// Input length protection
+require(bytes(_portName).length <= 50, "Port name too long");
+require(bytes(_berthNumber).length <= 20, "Berth number too long");
+require(bytes(_cargoType).length <= 50, "Cargo type too long");
+
+_bookingCounter++;
+uint256 newBookingId = _bookingCounter;
+
+_bookings[newBookingId] = Booking({
+bookingId: newBookingId,
+vesselId: _vesselId,
+portName: _portName,
+berthNumber: _berthNumber,
+cargoType: _cargoType,
+arrivalTime: _arrivalTime,
+departureTime: _departureTime,
+bookedBy: msg.sender,
+bookingTime: uint64(block.timestamp),
+status: BookingStatus.Pending,
+exists: true
+});
+
+_berthOccupancy[_portName][_berthNumber] = newBookingId;
+
+emit BookingCreated(newBookingId, _vesselId, _portName, _berthNumber, msg.sender, _arrivalTime);
+return newBookingId;
+}
+
+function confirmBooking(uint256 _bookingId) external onlyPortAuthority whenNotPaused {
+Booking storage b = _bookings[_bookingId];
+if (!b.exists) revert BookingNotFound();
+if (b.status != BookingStatus.Pending) revert InvalidStatus();
+
+b.status = BookingStatus.Confirmed;
+emit BookingConfirmed(_bookingId, b.portName, b.berthNumber, uint64(block.timestamp));
+}
+
+function completeBooking(uint256 _bookingId) external onlyPortAuthority whenNotPaused {
+Booking storage b = _bookings[_bookingId];
+if (!b.exists) revert BookingNotFound();
+if (b.status != BookingStatus.Confirmed) revert InvalidStatus();
+if (block.timestamp < b.departureTime) revert DepartureTimeNotReached();
+
+b.status = BookingStatus.Completed;
+_berthOccupancy[b.portName][b.berthNumber] = 0;
+
+emit BookingCompleted(_bookingId, b.portName, b.berthNumber, uint64(block.timestamp));
+}
+
+function cancelBooking(uint256 _bookingId) external whenNotPaused {
+Booking storage b = _bookings[_bookingId];
+if (!b.exists) revert BookingNotFound();
+if (b.status == BookingStatus.Completed) revert BookingAlreadyCompleted();
+
+bool isBooker = msg.sender == b.bookedBy;
+bool isAuthority = msg.sender == owner();
+
+if (!isBooker && !isAuthority) revert Unauthorized();
+
+b.status = BookingStatus.Cancelled;
+_berthOccupancy[b.portName][b.berthNumber] = 0;
+
+emit BookingCancelled(_bookingId, b.portName, b.berthNumber, uint64(block.timestamp));
+}
+
+// ===================== View Functions =====================
+
+function getBooking(uint256 _bookingId) external view returns (Booking memory) {
+Booking memory b = _bookings[_bookingId];
+if (!b.exists) revert BookingNotFound();
+return b;
+}
+
+function isBerthFree(string memory _portName, string memory _berthNumber) external view returns (bool) {
+return _berthOccupancy[_portName][_berthNumber] == 0;
+}
+
+function getTotalBookings() external view returns (uint256) {
+return _bookingCounter;
+}
+
+function getActiveBookingAt(string memory _portName, string memory _berthNumber)
+    external view returns (Booking memory){
+    uint256 bookingId = _berthOccupancy[_portName][_berthNumber];
+    if (bookingId == 0) revert BookingNotFound();
+    return _bookings[bookingId];
+    }
+}
