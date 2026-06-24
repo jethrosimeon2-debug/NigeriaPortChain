@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NigeriaPort Chain</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --navy:#0B1629;--navy2:#112240;--navy3:#1B3358;
+  --teal:#0ABFA3;--teal2:#07957F;--gold:#F5A623;
+  --white:#FFFFFF;--offwhite:#F0F5FA;--muted:#9FB4C9;
+  --danger:#E05C5C;--success:#2ECC71;--purple:#8E44AD;
+  --card:rgba(17,34,64,0.9);--border:rgba(10,191,163,0.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--navy);color:var(--offwhite);font-family:'Space Grotesk',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(10,191,163,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(10,191,163,0.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+header{position:sticky;top:0;z-index:100;background:rgba(11,22,41,0.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;}
+.logo{display:flex;align-items:center;gap:10px;font-size:1.1rem;font-weight:700;}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--teal),var(--teal2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.logo span{color:var(--teal);}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.network-badge{background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);color:var(--gold);font-size:0.7rem;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'JetBrains Mono',monospace;}
+#walletAddr{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--muted);}
+#connectBtn{background:linear-gradient(135deg,var(--teal),var(--teal2));color:var(--navy);font-weight:700;border:none;border-radius:8px;padding:8px 16px;font-size:0.82rem;cursor:pointer;transition:opacity 0.2s;font-family:'Space Grotesk',sans-serif;}
+#connectBtn:hover{opacity:0.85;}
+#connectBtn.connected{background:rgba(10,191,163,0.1);border:1px solid var(--teal);color:var(--teal);}
+.hero{position:relative;z-index:1;text-align:center;padding:2.5rem 2rem 1.2rem;}
+.hero-eyebrow{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:0.15em;color:var(--teal);text-transform:uppercase;margin-bottom:0.7rem;}
+.hero h1{font-size:clamp(1.5rem,4vw,2.6rem);font-weight:700;line-height:1.15;margin-bottom:0.5rem;}
+.hero h1 em{color:var(--teal);font-style:normal;}
+.hero p{color:var(--muted);font-size:0.88rem;max-width:520px;margin:0 auto;}
+.stats-bar{position:relative;z-index:1;display:flex;justify-content:center;margin:1.2rem auto;max-width:780px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.stat{flex:1;padding:0.8rem 0.8rem;text-align:center;border-right:1px solid var(--border);}
+.stat:last-child{border-right:none;}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:500;color:var(--teal);}
+.stat-label{font-size:0.65rem;color:var(--muted);margin-top:2px;}
+.contract-info{position:relative;z-index:1;max-width:960px;margin:0 auto 0.5rem;padding:0 1.2rem;display:flex;gap:0.5rem;flex-wrap:wrap;}
+.contract-chip{background:rgba(17,34,64,0.7);border:1px solid var(--border);border-radius:7px;padding:4px 9px;font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted);display:flex;gap:6px;align-items:center;}
+.contract-chip span:first-child{color:var(--teal);font-weight:600;}
+
+/* MODULE TABS */
+.modules-wrap{position:relative;z-index:1;max-width:960px;margin:0.8rem auto 0;padding:0 1.2rem;}
+.modules{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1rem;}
+.module-btn{padding:0.7rem 0.5rem;background:var(–navy2);border:1px solid var(–border);border-radius:10px;color:var(–muted);font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:‘Space Grotesk’,sans-serif;text-align:center;line-height:1.3;}
+.module-btn:hover{color:var(–white);border-color:var(–teal);}
+.module-btn.active{background:var(–navy3);color:var(–teal);border-color:var(–teal);}
+.module-btn .mod-icon{font-size:1.2rem;display:block;margin-bottom:3px;}
+
+/* SUB TABS */
+.subtabs{display:flex;gap:3px;background:var(–navy2);border:1px solid var(–border);border-radius:9px;padding:3px;margin-bottom:1rem;flex-wrap:wrap;}
+.subtab{flex:1;min-width:100px;padding:8px 6px;background:transparent;border:none;color:var(–muted);font-size:0.75rem;font-weight:600;cursor:pointer;border-radius:6px;transition:all 0.2s;font-family:‘Space Grotesk’,sans-serif;text-align:center;}
+.subtab:hover{color:var(–white);background:rgba(10,191,163,0.07);}
+.subtab.active{background:var(–navy3);color:var(–teal);}
+.module{display:none;padding-bottom:3rem;}
+.module.active{display:block;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* CARDS */
+.card{background:var(–card);border:1px solid var(–border);border-radius:13px;padding:1.3rem;margin-bottom:1rem;backdrop-filter:blur(8px);}
+.card-title{font-size:0.72rem;font-weight:600;letter-spacing:0.08em;color:var(–teal);text-transform:uppercase;margin-bottom:0.9rem;display:flex;align-items:center;gap:6px;}
+.card-note{font-size:0.77rem;color:var(–muted);margin-bottom:0.9rem;line-height:1.5;padding:0.6rem 0.9rem;background:rgba(10,191,163,0.05);border-left:3px solid var(–teal);border-radius:0 6px 6px 0;}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;}
+.form-grid.single{grid-template-columns:1fr;}
+.form-grid.triple{grid-template-columns:1fr 1fr 1fr;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:0.7rem;color:var(–muted);font-weight:500;}
+.field input,.field select{background:rgba(11,22,41,0.95);border:1.5px solid rgba(10,191,163,0.35);color:#FFFFFF;font-size:0.85rem;padding:9px 11px;border-radius:7px;font-family:‘Space Grotesk’,sans-serif;transition:border-color 0.2s;outline:none;}
+.field input:focus,.field select:focus{border-color:var(–teal);box-shadow:0 0 0 3px rgba(10,191,163,0.15);}
+.field input::placeholder{color:#9FB4C9;opacity:1;}
+.field select option{background:var(–navy2);color:#FFFFFF;}
+.field .hint{font-size:0.65rem;color:var(–muted);margin-top:2px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:9px 16px;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:‘Space Grotesk’,sans-serif;}
+.btn-primary{background:linear-gradient(135deg,var(–teal),var(–teal2));color:var(–navy);}
+.btn-primary:hover{opacity:0.88;transform:translateY(-1px);}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-outline{background:transparent;border:1px solid var(–teal);color:var(–teal);}
+.btn-outline:hover{background:rgba(10,191,163,0.1);}
+.btn-gold{background:linear-gradient(135deg,var(–gold),#d4891e);color:var(–navy);}
+.btn-gold:hover{opacity:0.88;}
+.btn-danger{background:linear-gradient(135deg,var(–danger),#b94444);color:white;}
+.btn-purple{background:linear-gradient(135deg,var(–purple),#6c3483);color:white;}
+.btn-purple:hover{opacity:0.88;}
+.btn-full{width:100%;margin-top:0.8rem;}
+.btn-row{display:flex;gap:0.6rem;margin-top:0.8rem;flex-wrap:wrap;}
+
+/* RESULTS */
+.result-box{margin-top:0.8rem;background:rgba(10,191,163,0.05);border:1px solid rgba(10,191,163,0.2);border-radius:9px;padding:0.85rem;font-family:‘JetBrains Mono’,monospace;font-size:0.74rem;line-height:1.85;display:none;}
+.result-box.show{display:block;}
+.result-box.error{background:rgba(224,92,92,0.07);border-color:rgba(224,92,92,0.3);color:#ff8c8c;}
+.result-row{display:flex;gap:8px;flex-wrap:wrap;}
+.result-key{color:var(–muted);min-width:150px;}
+.result-val{color:var(–offwhite);word-break:break-all;}
+.result-val.green{color:var(–success);}
+.result-val.gold{color:var(–gold);}
+.result-val.red{color:var(–danger);}
+.result-val.purple{color:#c39bd3;}
+
+/* SPINNER */
+.spinner{width:13px;height:13px;border:2px solid rgba(10,191,163,0.3);border-top-color:var(–teal);border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+.spinner.show{display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOAST */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;background:var(–navy2);border:1px solid var(–border);border-radius:10px;padding:0.8rem 1rem;font-size:0.78rem;max-width:300px;transform:translateY(80px);opacity:0;transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);display:flex;align-items:flex-start;gap:8px;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.toast-success{border-color:rgba(46,204,113,0.4);}
+#toast.toast-error{border-color:rgba(224,92,92,0.4);}
+
+@media(max-width:640px){
+.modules{grid-template-columns:repeat(2,1fr);}
+.form-grid,.form-grid.triple{grid-template-columns:1fr;}
+.stats-bar{flex-direction:column;}
+.stat{border-right:none;border-bottom:1px solid var(–border);}
+.stat:last-child{border-bottom:none;}
+header{padding:0 1rem;}
+}
+</style>
+
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚓</div>
+    NigeriaPort <span>Chain</span>
+  </div>
+  <div class="header-right">
+    <span class="network-badge">SEPOLIA TESTNET</span>
+    <span id="walletAddr"></span>
+    <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+</header>
+
+<div class="hero">
+  <span class="hero-eyebrow">Ethereum · Sepolia Testnet · Four Smart Contracts</span>
+  <h1>Blockchain Maritime<br/><em>Logistics Management</em></h1>
+  <p>Vessel registration, port booking, cargo documentation and seafarer certification — all on the Ethereum blockchain.</p>
+</div>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-val" id="statVessels">—</div><div class="stat-label">Vessels</div></div>
+  <div class="stat"><div class="stat-val" id="statBookings">—</div><div class="stat-label">Bookings</div></div>
+  <div class="stat"><div class="stat-val" id="statBols">—</div><div class="stat-label">Bills of Lading</div></div>
+  <div class="stat"><div class="stat-val" id="statSeafarers">—</div><div class="stat-label">Seafarers</div></div>
+  <div class="stat"><div class="stat-val" id="statBlock">—</div><div class="stat-label">Block</div></div>
+</div>
+
+<div class="contract-info">
+  <div class="contract-chip"><span>VesselRegistry</span><span id="chip1">0x124B75...D14C</span></div>
+  <div class="contract-chip"><span>PortBooking</span><span id="chip2">0x3275C9...d199</span></div>
+  <div class="contract-chip"><span>CargoDocumentation</span><span id="chip3">0x3912C7...9C88</span></div>
+  <div class="contract-chip"><span>SeafarerRegistry</span><span id="chip4">0xB8A3a7...169a</span></div>
+</div>
+
+<div class="modules-wrap">
+
+  <!-- MODULE SELECTOR -->
+
+  <div class="modules">
+    <button class="module-btn active" onclick="switchModule('vessel',this)">
+      <span class="mod-icon">⚓</span>Vessel Registry
+    </button>
+    <button class="module-btn" onclick="switchModule('port',this)">
+      <span class="mod-icon">🏭</span>Port Booking
+    </button>
+    <button class="module-btn" onclick="switchModule('cargo',this)">
+      <span class="mod-icon">📦</span>Cargo & eBOL
+    </button>
+    <button class="module-btn" onclick="switchModule('seafarer',this)">
+      <span class="mod-icon">👤</span>Seafarer Registry
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════ -->
+
+  <!-- MODULE 1: VESSEL REGISTRY               -->
+
+  <!-- ════════════════════════════════════════ -->
+
+  <div class="module active" id="module-vessel">
+    <div class="subtabs">
+      <button class="subtab active" onclick="switchSub('vessel','register',this)">⚓ Register Vessel</button>
+      <button class="subtab" onclick="switchSub('vessel','lookup',this)">🔍 Lookup by ID</button>
+      <button class="subtab" onclick="switchSub('vessel','imoSearch',this)">🔎 Find by IMO</button>
+      <button class="subtab" onclick="switchSub('vessel','status',this)">🔄 Update Status</button>
+    </div>
+
+```
+<div class="panel active" id="vessel-register">
+  <div class="card">
+    <div class="card-title">⚓ Register a New Vessel</div>
+    <div class="card-note">Only the port authority wallet (contract deployer) can register vessels.</div>
+    <div class="form-grid">
+      <div class="field"><label>Vessel Name</label><input id="reg_name" type="text" placeholder="e.g. MV Lagos Pioneer"/></div>
+      <div class="field"><label>IMO Number</label><input id="reg_imo" type="text" placeholder="e.g. IMO9876543"/></div>
+      <div class="field"><label>Vessel Type</label>
+        <select id="reg_type"><option value="">Select type...</option>
+          <option>Bulk Carrier</option><option>Container Ship</option><option>Tanker</option>
+          <option>General Cargo</option><option>Ro-Ro Vessel</option><option>Passenger Ship</option>
+          <option>Offshore Supply Vessel</option><option>Tugboat</option>
+        </select>
+      </div>
+      <div class="field"><label>Flag State (Country)</label><input id="reg_flag" type="text" placeholder="e.g. Nigeria"/></div>
+      <div class="field"><label>Owner Name</label><input id="reg_owner" type="text" placeholder="e.g. Zenith Shipping Ltd."/></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="regBtn" onclick="registerVessel()">
+      <span class="spinner" id="regSpinner"></span> Register Vessel on Blockchain
+    </button>
+    <div class="result-box" id="regResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="vessel-lookup">
+  <div class="card">
+    <div class="card-title">🔍 Lookup Vessel by ID</div>
+    <div class="form-grid single">
+      <div class="field"><label>Vessel ID</label><input id="look_id" type="number" placeholder="e.g. 1" min="1"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="lookupVessel()">Fetch Vessel Record</button>
+    <div class="result-box" id="lookResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="vessel-imoSearch">
+  <div class="card">
+    <div class="card-title">🔎 Find Vessel ID by IMO Number</div>
+    <div class="form-grid single">
+      <div class="field"><label>IMO Number</label><input id="imo_lookup" type="text" placeholder="e.g. IMO9876543"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="imoToId()">Get Vessel ID</button>
+    <div class="result-box" id="imoResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="vessel-status">
+  <div class="card">
+    <div class="card-title">🔄 Update Vessel Status</div>
+    <div class="card-note">Only the port authority wallet can update vessel status.</div>
+    <div class="form-grid">
+      <div class="field"><label>Vessel ID</label><input id="upd_id" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>New Status</label>
+        <select id="upd_status">
+          <option value="0">Registered</option><option value="1">In Transit</option>
+          <option value="2">At Port</option><option value="3">Departed</option><option value="4">Suspended</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-full" id="updBtn" onclick="updateVesselStatus()">
+      <span class="spinner" id="updSpinner"></span> Update Status
+    </button>
+    <div class="result-box" id="updResult"></div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ════════════════════════════════════════ -->
+
+  <!-- MODULE 2: PORT BOOKING                  -->
+
+  <!-- ════════════════════════════════════════ -->
+
+  <div class="module" id="module-port">
+    <div class="subtabs">
+      <button class="subtab active" onclick="switchSub('port','createBooking',this)">📋 Create Booking</button>
+      <button class="subtab" onclick="switchSub('port','manageBooking',this)">✅ Manage Booking</button>
+      <button class="subtab" onclick="switchSub('port','getBooking',this)">📦 Get Booking</button>
+      <button class="subtab" onclick="switchSub('port','checkBerth',this)">🔍 Check Berth</button>
+    </div>
+
+```
+<div class="panel active" id="port-createBooking">
+  <div class="card">
+    <div class="card-title">📋 Create Port Booking</div>
+    <div class="card-note">Any connected wallet can create a booking. Arrival and departure must be future dates. Berth must be free.</div>
+    <div class="form-grid">
+      <div class="field"><label>Vessel ID</label><input id="book_vid" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>Port Name</label>
+        <select id="book_port"><option value="">Select port...</option>
+          <option>Apapa Port</option><option>Tin Can Island Port</option><option>Onne Port</option>
+          <option>Warri Port</option><option>Calabar Port</option><option>Rivers Port</option>
+        </select>
+      </div>
+      <div class="field"><label>Berth Number</label><input id="book_berth" type="text" placeholder="e.g. BERTH-01"/></div>
+      <div class="field"><label>Cargo Type</label>
+        <select id="book_cargo"><option value="">Select...</option>
+          <option>Container</option><option>Bulk Dry</option><option>Liquid Bulk</option>
+          <option>General Cargo</option><option>Ro-Ro Cargo</option><option>Dangerous Goods</option>
+        </select>
+      </div>
+      <div class="field"><label>Arrival Date & Time</label><input id="book_arrival" type="datetime-local"/><span class="hint">Must be future</span></div>
+      <div class="field"><label>Departure Date & Time</label><input id="book_depart" type="datetime-local"/><span class="hint">Must be after arrival</span></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="bookBtn" onclick="createBooking()">
+      <span class="spinner" id="bookSpinner"></span> Submit Booking
+    </button>
+    <div class="result-box" id="bookResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="port-manageBooking">
+  <div class="card">
+    <div class="card-title">✅ Confirm / Complete / Cancel Booking</div>
+    <div class="card-note">Confirm and Complete require the port authority wallet. Cancel can be done by the booking creator or authority.</div>
+    <div class="form-grid single">
+      <div class="field"><label>Booking ID</label><input id="mgmt_id" type="number" placeholder="e.g. 1" min="1"/></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="confBtn" onclick="confirmBooking()"><span class="spinner" id="confSpinner"></span> Confirm</button>
+      <button class="btn btn-gold" id="compBtn" onclick="completeBooking()"><span class="spinner" id="compSpinner"></span> Complete</button>
+      <button class="btn btn-danger" id="cancelBtn" onclick="cancelBooking()"><span class="spinner" id="cancelSpinner"></span> Cancel</button>
+    </div>
+    <div class="result-box" id="mgmtResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="port-getBooking">
+  <div class="card">
+    <div class="card-title">📦 Retrieve Booking Record</div>
+    <div class="form-grid single">
+      <div class="field"><label>Booking ID</label><input id="get_id" type="number" placeholder="e.g. 1" min="1"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="getBooking()">Fetch from Blockchain</button>
+    <div class="result-box" id="getResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="port-checkBerth">
+  <div class="card">
+    <div class="card-title">🔍 Check Berth Availability</div>
+    <div class="form-grid">
+      <div class="field"><label>Port Name</label>
+        <select id="berth_port"><option value="">Select port...</option>
+          <option>Apapa Port</option><option>Tin Can Island Port</option><option>Onne Port</option>
+          <option>Warri Port</option><option>Calabar Port</option><option>Rivers Port</option>
+        </select>
+      </div>
+      <div class="field"><label>Berth Number</label><input id="berth_num" type="text" placeholder="e.g. BERTH-01"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="checkBerth()">Check Availability</button>
+    <div class="result-box" id="berthResult"></div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ════════════════════════════════════════ -->
+
+  <!-- MODULE 3: CARGO & eBOL                  -->
+
+  <!-- ════════════════════════════════════════ -->
+
+  <div class="module" id="module-cargo">
+
+```
+<div class="subtabs">
+  <button class="subtab active" onclick="switchSub('cargo','issueBol',this)">📄 Issue eBOL</button>
+  <button class="subtab" onclick="switchSub('cargo','transferBol',this)">🔁 Transfer eBOL</button>
+  <button class="subtab" onclick="switchSub('cargo','cargoStatus',this)">🔄 Update Status</button>
+  <button class="subtab" onclick="switchSub('cargo','getBol',this)">🔍 Get eBOL</button>
+</div>
+
+<div class="panel active" id="cargo-issueBol">
+  <div class="card">
+    <div class="card-title">📄 Issue Electronic Bill of Lading</div>
+    <div class="card-note">Only the port authority wallet can issue a Bill of Lading. Link it to a registered vessel and booking.</div>
+    <div class="form-grid">
+      <div class="field"><label>Vessel ID</label><input id="bol_vid" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>Booking ID</label><input id="bol_bid" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>Shipper Name</label><input id="bol_shipper" type="text" placeholder="e.g. Lagos Export Co."/></div>
+      <div class="field"><label>Consignee Name</label><input id="bol_consignee" type="text" placeholder="e.g. Rotterdam Imports Ltd."/></div>
+      <div class="field"><label>Origin Port</label>
+        <select id="bol_origin"><option value="">Select...</option>
+          <option>Apapa Port</option><option>Tin Can Island Port</option><option>Onne Port</option>
+          <option>Warri Port</option><option>Calabar Port</option><option>Rivers Port</option>
+        </select>
+      </div>
+      <div class="field"><label>Destination Port</label><input id="bol_dest" type="text" placeholder="e.g. Rotterdam, Netherlands"/></div>
+      <div class="field"><label>Cargo Description</label><input id="bol_desc" type="text" placeholder="e.g. 200 x 20ft containers of cocoa"/></div>
+      <div class="field"><label>Cargo Type</label>
+        <select id="bol_cargoType"><option value="">Select...</option>
+          <option>Container</option><option>Bulk Dry</option><option>Liquid Bulk</option>
+          <option>General Cargo</option><option>Ro-Ro Cargo</option><option>Dangerous Goods</option>
+        </select>
+      </div>
+      <div class="field"><label>Cargo Weight (kg)</label><input id="bol_weight" type="number" placeholder="e.g. 50000" min="1"/></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="bolBtn" onclick="issueBol()">
+      <span class="spinner" id="bolSpinner"></span> Issue eBOL on Blockchain
+    </button>
+    <div class="result-box" id="bolResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="cargo-transferBol">
+  <div class="card">
+    <div class="card-title">🔁 Transfer Bill of Lading</div>
+    <div class="card-note">The current eBOL holder or the port authority can transfer ownership to a new wallet address (e.g. consignee or bank).</div>
+    <div class="form-grid">
+      <div class="field"><label>eBOL ID</label><input id="trans_bolId" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>New Holder Wallet Address</label><input id="trans_addr" type="text" placeholder="0x..."/></div>
+    </div>
+    <button class="btn btn-purple btn-full" id="transBtn" onclick="transferBol()">
+      <span class="spinner" id="transSpinner"></span> Transfer eBOL
+    </button>
+    <div class="result-box" id="transResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="cargo-cargoStatus">
+  <div class="card">
+    <div class="card-title">🔄 Update Cargo Status</div>
+    <div class="card-note">Only the port authority wallet can update cargo status.</div>
+    <div class="form-grid">
+      <div class="field"><label>eBOL ID</label><input id="cst_id" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>New Status</label>
+        <select id="cst_status">
+          <option value="0">Issued</option><option value="1">In Transit</option>
+          <option value="2">At Destination Port</option><option value="3">Delivered</option><option value="4">Disputed</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-full" id="cstBtn" onclick="updateCargoStatus()">
+      <span class="spinner" id="cstSpinner"></span> Update Cargo Status
+    </button>
+    <div class="result-box" id="cstResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="cargo-getBol">
+  <div class="card">
+    <div class="card-title">🔍 Retrieve Bill of Lading</div>
+    <div class="form-grid single">
+      <div class="field"><label>eBOL ID</label><input id="getbol_id" type="number" placeholder="e.g. 1" min="1"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="getBol()">Fetch from Blockchain</button>
+    <div class="result-box" id="getBolResult"></div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ════════════════════════════════════════ -->
+
+  <!-- MODULE 4: SEAFARER REGISTRY             -->
+
+  <!-- ════════════════════════════════════════ -->
+
+  <div class="module" id="module-seafarer">
+
+```
+<div class="subtabs">
+  <button class="subtab active" onclick="switchSub('seafarer','registerSF',this)">👤 Register Seafarer</button>
+  <button class="subtab" onclick="switchSub('seafarer','lookupSF',this)">🔍 Lookup by ID</button>
+  <button class="subtab" onclick="switchSub('seafarer','certSearch',this)">🔎 Find by Cert No.</button>
+  <button class="subtab" onclick="switchSub('seafarer','updateCert',this)">🔄 Update Status</button>
+</div>
+
+<div class="panel active" id="seafarer-registerSF">
+  <div class="card">
+    <div class="card-title">👤 Register a Seafarer</div>
+    <div class="card-note">Only the port authority wallet (NIMASA/NPA) can register seafarers and their certificates.</div>
+    <div class="form-grid">
+      <div class="field"><label>Full Name</label><input id="sf_name" type="text" placeholder="e.g. Chukwuemeka Okafor"/></div>
+      <div class="field"><label>Rank / Position</label>
+        <select id="sf_rank"><option value="">Select rank...</option>
+          <option>Master</option><option>Chief Officer</option><option>Second Officer</option>
+          <option>Third Officer</option><option>Chief Engineer</option><option>Second Engineer</option>
+          <option>Able Seaman</option><option>Ordinary Seaman</option><option>Cook</option><option>Cadet</option>
+        </select>
+      </div>
+      <div class="field"><label>Nationality</label><input id="sf_nation" type="text" placeholder="e.g. Nigerian"/></div>
+      <div class="field"><label>Certificate Number</label><input id="sf_certno" type="text" placeholder="e.g. NIMASA/2024/001234"/></div>
+      <div class="field"><label>Certificate Type</label>
+        <select id="sf_certtype"><option value="">Select type...</option>
+          <option>STCW Basic Safety Training</option><option>Officer of the Watch</option>
+          <option>Chief Mate Certificate</option><option>Master Certificate</option>
+          <option>Engineer Officer Certificate</option><option>Security Awareness</option>
+          <option>Medical Certificate</option>
+        </select>
+      </div>
+      <div class="field"><label>Issue Date</label><input id="sf_issue" type="date"/></div>
+      <div class="field"><label>Expiry Date</label><input id="sf_expiry" type="date"/></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="sfRegBtn" onclick="registerSeafarer()">
+      <span class="spinner" id="sfRegSpinner"></span> Register Seafarer on Blockchain
+    </button>
+    <div class="result-box" id="sfRegResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="seafarer-lookupSF">
+  <div class="card">
+    <div class="card-title">🔍 Lookup Seafarer by ID</div>
+    <div class="form-grid single">
+      <div class="field"><label>Seafarer ID</label><input id="sf_lookId" type="number" placeholder="e.g. 1" min="1"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="lookupSeafarer()">Fetch Record</button>
+    <div class="result-box" id="sfLookResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="seafarer-certSearch">
+  <div class="card">
+    <div class="card-title">🔎 Find Seafarer by Certificate Number</div>
+    <div class="form-grid single">
+      <div class="field"><label>Certificate Number</label><input id="sf_certSearch" type="text" placeholder="e.g. NIMASA/2024/001234"/></div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="searchByCert()">Search</button>
+    <div class="result-box" id="sfCertResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="seafarer-updateCert">
+  <div class="card">
+    <div class="card-title">🔄 Update Certificate Status</div>
+    <div class="card-note">Only the port authority wallet can update a seafarer's certification status.</div>
+    <div class="form-grid">
+      <div class="field"><label>Seafarer ID</label><input id="sf_updId" type="number" placeholder="e.g. 1" min="1"/></div>
+      <div class="field"><label>New Status</label>
+        <select id="sf_updStatus">
+          <option value="0">Valid</option><option value="1">Expired</option>
+          <option value="2">Suspended</option><option value="3">Revoked</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-full" id="sfUpdBtn" onclick="updateCertStatus()">
+      <span class="spinner" id="sfUpdSpinner"></span> Update Status
+    </button>
+    <div class="result-box" id="sfUpdResult"></div>
+  </div>
+</div>
+```
+
+  </div>
+
+</div><!-- end modules-wrap -->
+
+<div id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
+
+<script>
+// ── Contract Addresses ──────────────────────────────────
+const VESSEL_ADDR  = "0x124B758750F368297c0c52c3DD1faB0B1Ae5D14C";
+const BOOKING_ADDR = "0x3275C9f7AFDfD1626E3173D5b162D4CF6B28d199";
+let   CARGO_ADDR   = "0x3912C71EcD2fc4897956FdE669C996f8f9Aa9C88";
+let   SEAFARER_ADDR= "0xB8A3a784423d0f6f0D02d5Ff1F05a30c5B71169a";
+const SEPOLIA_ID   = 11155111n;
+
+// ── ABIs ─────────────────────────────────────────────────
+const VESSEL_ABI = [
+  "function registerVessel(string memory _vesselName,string memory _imoNumber,string memory _vesselType,string memory _flagState,string memory _ownerName) public returns (uint256)",
+  "function updateVesselStatus(uint256 _vesselId,uint8 _newStatus) public",
+  "function getVessel(uint256 _vesselId) public view returns (uint256,string memory,string memory,string memory,string memory,string memory,address,uint256,uint8)",
+  "function getTotalVessels() public view returns (uint256)",
+  "function imoToId(string memory) public view returns (uint256)",
+  "function authority() public view returns (address)"
+];
+const BOOKING_ABI = [
+  "function createBooking(uint256 _vesselId,string calldata _portName,string calldata _berthNumber,string calldata _cargoType,uint256 _arrivalTime,uint256 _departureTime) external returns (uint256)",
+  "function confirmBooking(uint256 _bookingId) external",
+  "function completeBooking(uint256 _bookingId) external",
+  "function cancelBooking(uint256 _bookingId) external",
+  "function getBooking(uint256 _bookingId) external view returns (uint256,uint256,string memory,string memory,string memory,uint256,uint256,address,uint8)",
+  "function getTotalBookings() external view returns (uint256)",
+  "function isBerthFree(string calldata _portName,string calldata _berthNumber) external view returns (bool)"
+];
+const CARGO_ABI = [
+  "function issueBillOfLading(uint256 _vesselId,uint256 _bookingId,string memory _shipperName,string memory _consigneeName,string memory _cargoDescription,string memory _originPort,string memory _destinationPort,uint256 _cargoWeightKg,string memory _cargoType) public returns (uint256)",
+  "function transferBol(uint256 _bolId,address _newHolder) public",
+  "function updateCargoStatus(uint256 _bolId,uint8 _newStatus) public",
+  "function getBasicInfo(uint256 _bolId) public view returns (uint256,uint256,uint256,address,uint8)",
+  "function billsOfLading(uint256) public view returns (uint256 bolId,uint256 vesselId,uint256 bookingId,string memory shipperName,string memory consigneeName,string memory cargoDescription,string memory originPort,string memory destinationPort,uint256 cargoWeightKg,string memory cargoType,address currentHolder,uint256 issueTime,uint8 status,bool exists)",
+  "function getTotalBols() public view returns (uint256)",
+  "event BolIssued(uint256 indexed bolId, uint256 indexed vesselId, string shipperName, string consigneeName, uint256 timestamp)"
+];
+const SEAFARER_ABI = [
+  "function registerSeafarer(string memory _fullName,string memory _rankOrPosition,string memory _nationality,string memory _certificateNumber,string memory _certificateType,uint256 _issueDate,uint256 _expiryDate) public returns (uint256)",
+  "function updateCertificateStatus(uint256 _seafarerId,uint8 _newStatus) public",
+  "function getSeafarer(uint256 _seafarerId) public view returns (uint256,string memory,string memory,string memory,string memory,string memory,uint256,uint256,uint8)",
+  "function getIdByCertNumber(string memory _certNumber) public view returns (uint256)",
+  "function getTotalSeafarers() public view returns (uint256)"
+];
+
+const VESSEL_STATUS  = ["Registered","In Transit","At Port","Departed","Suspended"];
+const BOOKING_STATUS = ["Pending","Confirmed","Completed","Cancelled"];
+const CARGO_STATUS   = ["Issued","In Transit","At Destination Port","Delivered","Disputed"];
+const CERT_STATUS    = ["Valid","Expired","Suspended","Revoked"];
+
+let provider, signer, vesselC, bookingC, cargoC, seafarerC, connected=false;
+
+// ── Connect ──────────────────────────────────────────────
+async function connectWallet() {
+  if (!window.ethereum) { toast("MetaMask not found. Please install it.","error"); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    let net = await provider.getNetwork();
+    if (net.chainId !== SEPOLIA_ID) {
+      try { await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0xaa36a7"}]}); provider = new ethers.BrowserProvider(window.ethereum); }
+      catch(e) { toast("Please switch MetaMask to Sepolia testnet.","error"); return; }
+    }
+    await provider.send("eth_requestAccounts",[]);
+    signer = await provider.getSigner();
+    const addr = await signer.getAddress();
+    vesselC  = new ethers.Contract(VESSEL_ADDR,  VESSEL_ABI,  signer);
+    bookingC = new ethers.Contract(BOOKING_ADDR, BOOKING_ABI, signer);
+    if (CARGO_ADDR)    cargoC    = new ethers.Contract(CARGO_ADDR,    CARGO_ABI,    signer);
+    if (SEAFARER_ADDR) seafarerC = new ethers.Contract(SEAFARER_ADDR, SEAFARER_ABI, signer);
+    connected=true;
+    document.getElementById("walletAddr").textContent = addr.slice(0,6)+"..."+addr.slice(-4);
+    const btn=document.getElementById("connectBtn"); btn.textContent="Connected ✓"; btn.classList.add("connected");
+    toast("Wallet connected: "+addr.slice(0,6)+"..."+addr.slice(-4),"success");
+    loadStats();
+  } catch(e) { toast("Connection failed: "+(e.reason||e.message),"error"); }
+}
+
+function setCargoAddress() {
+  const addr = document.getElementById("cargoAddrInput").value.trim();
+  if (!ethers.isAddress(addr)) { toast("Invalid contract address","error"); return; }
+  CARGO_ADDR = addr;
+  document.getElementById("chip3").textContent = addr.slice(0,8)+"..."+addr.slice(-4);
+  if (signer) cargoC = new ethers.Contract(CARGO_ADDR, CARGO_ABI, signer);
+  toast("Cargo contract address set!","success");
+  loadStats();
+}
+
+function setSeafarerAddress() {
+  const addr = document.getElementById("seafarerAddrInput").value.trim();
+  if (!ethers.isAddress(addr)) { toast("Invalid contract address","error"); return; }
+  SEAFARER_ADDR = addr;
+  document.getElementById("chip4").textContent = addr.slice(0,8)+"..."+addr.slice(-4);
+  if (signer) seafarerC = new ethers.Contract(SEAFARER_ADDR, SEAFARER_ABI, signer);
+  toast("Seafarer contract address set!","success");
+  loadStats();
+}
+
+// ── Stats ────────────────────────────────────────────────
+async function loadStats() {
+  try { document.getElementById("statBlock").textContent="#"+(await provider.getBlockNumber()).toLocaleString(); } catch(e){}
+  try { document.getElementById("statVessels").textContent=(await vesselC.getTotalVessels()).toString(); } catch(e){ document.getElementById("statVessels").textContent="N/A"; }
+  try { document.getElementById("statBookings").textContent=(await bookingC.getTotalBookings()).toString(); } catch(e){ document.getElementById("statBookings").textContent="N/A"; }
+  try { document.getElementById("statBols").textContent=cargoC?(await cargoC.getTotalBols()).toString():"—"; } catch(e){}
+  try { document.getElementById("statSeafarers").textContent=seafarerC?(await seafarerC.getTotalSeafarers()).toString():"—"; } catch(e){}
+}
+
+// ── Vessel Functions ──────────────────────────────────────
+async function registerVessel() {
+  if(!guard()) return;
+  const name=v("reg_name"),imo=v("reg_imo"),type=v("reg_type"),flag=v("reg_flag"),owner=v("reg_owner");
+  if(!name||!imo||!type||!flag||!owner){showRes("regResult","error","⚠ Fill in all fields.");return;}
+  spin("regBtn","regSpinner",true,"Sending...");
+  try {
+    const tx=await vesselC.registerVessel(name,imo,type,flag,owner);
+    showRes("regResult","success",row("Status","⏳ Transaction sent...")+row("Tx Hash",tx.hash));
+    const receipt=await tx.wait(); let newId="—";
+    try{ const iface=new ethers.Interface(VESSEL_ABI); for(const log of receipt.logs){try{const p2=iface.parseLog(log);if(p2.name==="VesselRegistered")newId=p2.args[0].toString();}catch(e){}} }catch(e){}
+    showRes("regResult","success",row("Status","✅ Vessel registered","green")+row("Vessel ID",newId,"gold")+row("Name",name)+row("IMO",imo)+row("Type",type)+row("Flag",flag)+row("Owner",owner)+row("Tx Hash",tx.hash));
+    toast("Vessel registered! ID: "+newId,"success"); loadStats();
+  } catch(e){showRes("regResult","error","❌ "+(e.reason||e.message));toast("Registration failed","error");}
+  spin("regBtn","regSpinner",false,"Register Vessel on Blockchain");
+}
+
+async function lookupVessel() {
+  if(!guard()) return;
+  const id=v("look_id"); if(!id){showRes("lookResult","error","⚠ Enter a vessel ID.");return;}
+  try {
+    const [vid,name,imo,type,flag,owner,regBy,regTime,status]=await vesselC.getVessel(parseInt(id));
+    showRes("lookResult","success",row("Vessel ID",vid.toString(),"gold")+row("Name",name)+row("IMO",imo)+row("Type",type)+row("Flag",flag)+row("Owner",owner)+row("Status",VESSEL_STATUS[Number(status)],"green")+row("Registered By",regBy)+row("Date",new Date(Number(regTime)*1000).toLocaleString()));
+  } catch(e){showRes("lookResult","error","❌ "+(e.reason||e.message||"Not found"));}
+}
+
+async function imoToId() {
+  if(!guard()) return;
+  const imo=v("imo_lookup"); if(!imo){showRes("imoResult","error","⚠ Enter IMO.");return;}
+  try {
+    const id=await vesselC.imoToId(imo);
+    if(id.toString()==="0"){showRes("imoResult","error","❌ No vessel with IMO: "+imo);return;}
+    showRes("imoResult","success",row("IMO",imo)+row("Vessel ID",id.toString(),"gold")+row("Tip","Use this ID in Lookup tab",""));
+  } catch(e){showRes("imoResult","error","❌ "+(e.reason||e.message));}
+}
+
+async function updateVesselStatus() {
+  if(!guard()) return;
+  const id=v("upd_id"),status=v("upd_status"); if(!id){showRes("updResult","error","⚠ Enter vessel ID.");return;}
+  spin("updBtn","updSpinner",true,"Updating...");
+  try {
+    const tx=await vesselC.updateVesselStatus(parseInt(id),parseInt(status));
+    await tx.wait();
+    showRes("updResult","success",row("Status","✅ Status updated","green")+row("Vessel ID",id,"gold")+row("New Status",VESSEL_STATUS[parseInt(status)])+row("Tx Hash",tx.hash));
+    toast("Status updated: "+VESSEL_STATUS[parseInt(status)],"success");
+  } catch(e){showRes("updResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}
+  spin("updBtn","updSpinner",false,"Update Status");
+}
+
+// ── Booking Functions ────────────────────────────────────
+async function createBooking() {
+  if(!guard()) return;
+  const vid=v("book_vid"),port=v("book_port"),berth=v("book_berth"),cargo=v("book_cargo"),arrStr=v("book_arrival"),depStr=v("book_depart");
+  if(!vid||!port||!berth||!cargo||!arrStr||!depStr){showRes("bookResult","error","⚠ Fill in all fields.");return;}
+  const arrTs=Math.floor(new Date(arrStr).getTime()/1000), depTs=Math.floor(new Date(depStr).getTime()/1000), now=Math.floor(Date.now()/1000);
+  if(arrTs<=now){showRes("bookResult","error","⚠ Arrival must be in the future.");return;}
+  if(depTs<=arrTs){showRes("bookResult","error","⚠ Departure must be after arrival.");return;}
+  spin("bookBtn","bookSpinner",true,"Sending...");
+  try {
+    const tx=await bookingC.createBooking(parseInt(vid),port,berth,cargo,arrTs,depTs);
+    showRes("bookResult","success",row("Status","⏳ Sent...")+row("Tx Hash",tx.hash));
+    const receipt=await tx.wait(); let newId="—";
+    try{ const iface=new ethers.Interface(BOOKING_ABI); for(const log of receipt.logs){try{const p2=iface.parseLog(log);if(p2.name==="BookingCreated")newId=p2.args[0].toString();}catch(e){}} }catch(e){}
+    showRes("bookResult","success",row("Status","✅ Booking submitted","green")+row("Booking ID",newId,"gold")+row("Vessel ID",vid)+row("Port",port)+row("Berth",berth)+row("Cargo",cargo)+row("Arrival",new Date(arrTs*1000).toLocaleString())+row("Tx Hash",tx.hash));
+    toast("Booking created! ID: "+newId,"success"); loadStats();
+  } catch(e){showRes("bookResult","error","❌ "+(e.reason||e.message));toast("Booking failed","error");}
+  spin("bookBtn","bookSpinner",false,"Submit Booking");
+}
+
+async function confirmBooking(){if(!guard())return;const id=v("mgmt_id");if(!id){showRes("mgmtResult","error","⚠ Enter booking ID.");return;}spin("confBtn","confSpinner",true,"...");try{const tx=await bookingC.confirmBooking(parseInt(id));await tx.wait();showRes("mgmtResult","success",row("Status","✅ Booking confirmed","green")+row("Booking ID",id,"gold")+row("Tx Hash",tx.hash));toast("Booking #"+id+" confirmed","success");}catch(e){showRes("mgmtResult","error","❌ "+(e.reason||e.message));toast("Failed — are you the port authority?","error");}spin("confBtn","confSpinner",false,"Confirm");}
+async function completeBooking(){if(!guard())return;const id=v("mgmt_id");if(!id){showRes("mgmtResult","error","⚠ Enter booking ID.");return;}spin("compBtn","compSpinner",true,"...");try{const tx=await bookingC.completeBooking(parseInt(id));await tx.wait();showRes("mgmtResult","success",row("Status","✅ Booking completed","green")+row("Booking ID",id,"gold")+row("Tx Hash",tx.hash));toast("Booking #"+id+" completed","success");}catch(e){showRes("mgmtResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}spin("compBtn","compSpinner",false,"Complete");}
+async function cancelBooking(){if(!guard())return;const id=v("mgmt_id");if(!id){showRes("mgmtResult","error","⚠ Enter booking ID.");return;}spin("cancelBtn","cancelSpinner",true,"...");try{const tx=await bookingC.cancelBooking(parseInt(id));await tx.wait();showRes("mgmtResult","success",row("Status","Booking cancelled","red")+row("Booking ID",id,"gold")+row("Tx Hash",tx.hash));toast("Booking #"+id+" cancelled","success");}catch(e){showRes("mgmtResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}spin("cancelBtn","cancelSpinner",false,"Cancel");}
+
+async function getBooking() {
+  if(!guard()) return;
+  const id=v("get_id"); if(!id){showRes("getResult","error","⚠ Enter a booking ID.");return;}
+  try {
+    const [bid,vid,port,berth,cargo,arr,dep,bookedBy,status]=await bookingC.getBooking(parseInt(id));
+    const sl=BOOKING_STATUS[Number(status)]||status.toString();
+    const cm={"Pending":"gold","Confirmed":"green","Completed":"green","Cancelled":"red"};
+    showRes("getResult","success",row("Booking ID",bid.toString(),"gold")+row("Vessel ID",vid.toString())+row("Port",port)+row("Berth",berth)+row("Cargo",cargo)+row("Arrival",new Date(Number(arr)*1000).toLocaleString())+row("Departure",new Date(Number(dep)*1000).toLocaleString())+row("Booked By",bookedBy)+row("Status",sl,cm[sl]||""));
+  } catch(e){showRes("getResult","error","❌ "+(e.reason||e.message||"Not found"));}
+}
+
+async function checkBerth() {
+  if(!guard()) return;
+  const port=v("berth_port"),berth=v("berth_num"); if(!port||!berth){showRes("berthResult","error","⚠ Select port and enter berth.");return;}
+  try {
+    const free=await bookingC.isBerthFree(port,berth);
+    showRes("berthResult",free?"success":"error",row("Port",port)+row("Berth",berth)+row("Status",free?"✅ AVAILABLE — berth is free":"🔴 OCCUPIED — berth is taken",free?"green":"red"));
+  } catch(e){showRes("berthResult","error","❌ "+(e.reason||e.message));}
+}
+
+// ── Cargo / eBOL Functions ────────────────────────────────
+function requireCargo(){if(!cargoC){toast("Set the CargoDocumentation contract address first.","error");return false;}return guard();}
+
+async function issueBol() {
+  if(!requireCargo()) return;
+  const vid=v("bol_vid"),bid=v("bol_bid"),ship=v("bol_shipper"),cons=v("bol_consignee"),desc=v("bol_desc"),orig=v("bol_origin"),dest=v("bol_dest"),weight=v("bol_weight"),ctype=v("bol_cargoType");
+  if(!vid||!bid||!ship||!cons||!desc||!orig||!dest||!weight||!ctype){showRes("bolResult","error","⚠ Fill in all fields.");return;}
+  spin("bolBtn","bolSpinner",true,"Issuing...");
+  try {
+    const tx=await cargoC.issueBillOfLading(parseInt(vid),parseInt(bid),ship,cons,desc,orig,dest,parseInt(weight),ctype);
+    showRes("bolResult","success",row("Status","⏳ Sent...")+row("Tx Hash",tx.hash));
+    const receipt=await tx.wait(); let newId="—";
+    try{ const iface=new ethers.Interface(CARGO_ABI); for(const log of receipt.logs){try{const p2=iface.parseLog(log);if(p2.name==="BolIssued")newId=p2.args[0].toString();}catch(e){}} }catch(e){}
+    showRes("bolResult","success",row("Status","✅ eBOL issued","green")+row("eBOL ID",newId,"gold")+row("Vessel ID",vid)+row("Booking ID",bid)+row("Shipper",ship)+row("Consignee",cons)+row("Origin",orig)+row("Destination",dest)+row("Weight",weight+" kg")+row("Tx Hash",tx.hash));
+    toast("eBOL issued! ID: "+newId,"success"); loadStats();
+  } catch(e){showRes("bolResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}
+  spin("bolBtn","bolSpinner",false,"Issue eBOL on Blockchain");
+}
+
+async function transferBol() {
+  if(!requireCargo()) return;
+  const id=v("trans_bolId"),addr=v("trans_addr"); if(!id||!addr){showRes("transResult","error","⚠ Fill in all fields.");return;}
+  if(!ethers.isAddress(addr)){showRes("transResult","error","⚠ Invalid wallet address.");return;}
+  spin("transBtn","transSpinner",true,"Transferring...");
+  try {
+    const tx=await cargoC.transferBol(parseInt(id),addr);
+    await tx.wait();
+    showRes("transResult","success",row("Status","✅ eBOL transferred","green")+row("eBOL ID",id,"gold")+row("New Holder",addr)+row("Tx Hash",tx.hash));
+    toast("eBOL #"+id+" transferred","success");
+  } catch(e){showRes("transResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}
+  spin("transBtn","transSpinner",false,"Transfer eBOL");
+}
+
+async function updateCargoStatus() {
+  if(!requireCargo()) return;
+  const id=v("cst_id"),status=v("cst_status"); if(!id){showRes("cstResult","error","⚠ Enter eBOL ID.");return;}
+  spin("cstBtn","cstSpinner",true,"Updating...");
+  try {
+    const tx=await cargoC.updateCargoStatus(parseInt(id),parseInt(status));
+    await tx.wait();
+    showRes("cstResult","success",row("Status","✅ Cargo status updated","green")+row("eBOL ID",id,"gold")+row("New Status",CARGO_STATUS[parseInt(status)])+row("Tx Hash",tx.hash));
+    toast("Cargo status updated","success");
+  } catch(e){showRes("cstResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}
+  spin("cstBtn","cstSpinner",false,"Update Cargo Status");
+}
+
+async function getBol() {
+  if(!requireCargo()) return;
+  const id=v("getbol_id"); if(!id){showRes("getBolResult","error","⚠ Enter eBOL ID.");return;}
+  try {
+    const [bolId,vid,bid,ship,cons,desc,orig,dest,weight,ctype,holder,issueTime,status,exists]=await cargoC.billsOfLading(parseInt(id));
+    if(!exists){showRes("getBolResult","error","❌ No eBOL found with ID: "+id);return;}
+    const sl=CARGO_STATUS[Number(status)]||status.toString();
+    showRes("getBolResult","success",row("eBOL ID",bolId.toString(),"gold")+row("Vessel ID",vid.toString())+row("Booking ID",bid.toString())+row("Shipper",ship)+row("Consignee",cons)+row("Description",desc)+row("Origin",orig)+row("Destination",dest)+row("Weight",weight.toString()+" kg")+row("Cargo Type",ctype)+row("Current Holder",holder)+row("Issued At",new Date(Number(issueTime)*1000).toLocaleString())+row("Status",sl,sl==="Delivered"?"green":sl==="Disputed"?"red":"gold"));
+  } catch(e){showRes("getBolResult","error","❌ "+(e.reason||e.message||"Not found"));}
+}
+
+// ── Seafarer Functions ────────────────────────────────────
+function requireSeafarer(){if(!seafarerC){toast("Set the SeafarerRegistry contract address first.","error");return false;}return guard();}
+
+async function registerSeafarer() {
+  if(!requireSeafarer()) return;
+  const name=v("sf_name"),rank=v("sf_rank"),nation=v("sf_nation"),certno=v("sf_certno"),certtype=v("sf_certtype"),issue=v("sf_issue"),expiry=v("sf_expiry");
+  if(!name||!rank||!nation||!certno||!certtype||!issue||!expiry){showRes("sfRegResult","error","⚠ Fill in all fields.");return;}
+  const issueTs=Math.floor(new Date(issue).getTime()/1000), expiryTs=Math.floor(new Date(expiry).getTime()/1000);
+  if(expiryTs<=issueTs){showRes("sfRegResult","error","⚠ Expiry must be after issue date.");return;}
+  spin("sfRegBtn","sfRegSpinner",true,"Registering...");
+  try {
+    const tx=await seafarerC.registerSeafarer(name,rank,nation,certno,certtype,issueTs,expiryTs);
+    showRes("sfRegResult","success",row("Status","⏳ Sent...")+row("Tx Hash",tx.hash));
+    const receipt=await tx.wait(); let newId="—";
+    try{ const iface=new ethers.Interface(SEAFARER_ABI); for(const log of receipt.logs){try{const p2=iface.parseLog(log);if(p2.name==="SeafarerRegistered")newId=p2.args[0].toString();}catch(e){}} }catch(e){}
+    showRes("sfRegResult","success",row("Status","✅ Seafarer registered","green")+row("Seafarer ID",newId,"gold")+row("Name",name)+row("Rank",rank)+row("Nationality",nation)+row("Certificate No.",certno)+row("Certificate Type",certtype)+row("Issue Date",new Date(issueTs*1000).toLocaleDateString())+row("Expiry Date",new Date(expiryTs*1000).toLocaleDateString())+row("Tx Hash",tx.hash));
+    toast("Seafarer registered! ID: "+newId,"success"); loadStats();
+  } catch(e){showRes("sfRegResult","error","❌ "+(e.reason||e.message));toast("Registration failed","error");}
+  spin("sfRegBtn","sfRegSpinner",false,"Register Seafarer on Blockchain");
+}
+
+async function lookupSeafarer() {
+  if(!requireSeafarer()) return;
+  const id=v("sf_lookId"); if(!id){showRes("sfLookResult","error","⚠ Enter a seafarer ID.");return;}
+  try {
+    const [sfid,name,rank,nation,certno,certtype,issue,expiry,status]=await seafarerC.getSeafarer(parseInt(id));
+    const sl=CERT_STATUS[Number(status)]||status.toString();
+    const cm={"Valid":"green","Expired":"red","Suspended":"gold","Revoked":"red"};
+    showRes("sfLookResult","success",row("Seafarer ID",sfid.toString(),"gold")+row("Name",name)+row("Rank",rank)+row("Nationality",nation)+row("Certificate No.",certno)+row("Certificate Type",certtype)+row("Issue Date",new Date(Number(issue)*1000).toLocaleDateString())+row("Expiry Date",new Date(Number(expiry)*1000).toLocaleDateString())+row("Status",sl,cm[sl]||""));
+  } catch(e){showRes("sfLookResult","error","❌ "+(e.reason||e.message||"Not found"));}
+}
+
+async function searchByCert() {
+  if(!requireSeafarer()) return;
+  const cert=v("sf_certSearch"); if(!cert){showRes("sfCertResult","error","⚠ Enter certificate number.");return;}
+  try {
+    const id=await seafarerC.getIdByCertNumber(cert);
+    if(id.toString()==="0"){showRes("sfCertResult","error","❌ No seafarer found with certificate: "+cert);return;}
+    showRes("sfCertResult","success",row("Certificate No.",cert)+row("Seafarer ID",id.toString(),"gold")+row("Tip","Use this ID in the Lookup tab",""));
+  } catch(e){showRes("sfCertResult","error","❌ "+(e.reason||e.message));}
+}
+
+async function updateCertStatus() {
+  if(!requireSeafarer()) return;
+  const id=v("sf_updId"),status=v("sf_updStatus"); if(!id){showRes("sfUpdResult","error","⚠ Enter seafarer ID.");return;}
+  spin("sfUpdBtn","sfUpdSpinner",true,"Updating...");
+  try {
+    const tx=await seafarerC.updateCertificateStatus(parseInt(id),parseInt(status));
+    await tx.wait();
+    showRes("sfUpdResult","success",row("Status","✅ Certificate status updated","green")+row("Seafarer ID",id,"gold")+row("New Status",CERT_STATUS[parseInt(status)])+row("Tx Hash",tx.hash));
+    toast("Certificate status updated","success");
+  } catch(e){showRes("sfUpdResult","error","❌ "+(e.reason||e.message));toast("Failed","error");}
+  spin("sfUpdBtn","sfUpdSpinner",false,"Update Status");
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function v(id){return document.getElementById(id).value.trim();}
+function guard(){if(!connected){toast("Connect your MetaMask wallet first.","error");return false;}return true;}
+function row(k,val,cls=""){return `<div class="result-row"><span class="result-key">${k}</span><span class="result-val ${cls}">${val}</span></div>`;}
+function showRes(id,type,html){const el=document.getElementById(id);el.className="result-box show "+(type==="error"?"error":"success");el.innerHTML=html;}
+function spin(btnId,spinnerId,loading,label){document.getElementById(btnId).disabled=loading;document.getElementById(spinnerId).className=loading?"spinner show":"spinner";if(!loading){const btn=document.getElementById(btnId);const nodes=btn.childNodes;nodes[nodes.length-1].textContent=" "+label;}}
+
+function switchModule(name,el){
+  document.querySelectorAll(".module").forEach(m=>m.classList.remove("active"));
+  document.querySelectorAll(".module-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("module-"+name).classList.add("active");
+  el.classList.add("active");
+}
+
+function switchSub(module,name,el){
+  const mod=document.getElementById("module-"+module);
+  mod.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  mod.querySelectorAll(".subtab").forEach(t=>t.classList.remove("active"));
+  document.getElementById(module+"-"+name).classList.add("active");
+  el.classList.add("active");
+}
+
+let toastTimer;
+function toast(msg,type){
+  const t=document.getElementById("toast");
+  document.getElementById("toastIcon").textContent=type==="success"?"✅":"⚠️";
+  document.getElementById("toastMsg").textContent=msg;
+  t.className="toast show toast-"+type;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),4500);
+}
+
+window.addEventListener("load",async()=>{
+  if(window.ethereum){const accounts=await window.ethereum.request({method:"eth_accounts"});if(accounts.length>0)connectWallet();}
+});
+</script>
+
+</body>
+</html>
